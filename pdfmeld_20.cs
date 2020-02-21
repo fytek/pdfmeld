@@ -56,7 +56,7 @@ namespace FyTek
         private static String srvFile = ""; // the file of servers and ports
         private static int srvNum = 0; // the array index for the next server to use
         private bool useAvailSrv = false; // true when choosing the next available server
-        private Dictionary<string,string> opts = new Dictionary<string,string>(); // all of the parameter settings from the method calls
+        private Dictionary<string,object> opts = new Dictionary<string,object>(); // all of the parameter settings from the method calls
         private Dictionary<string,object> server = new Dictionary<string,object>(); // the server host/port/log file key/values
 
         private String units = "";
@@ -135,33 +135,33 @@ namespace FyTek
             startInfo.FileName = exe;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             String cmdsOut = "";
-            String s = "";
+            object s = "";
 
-            if (opts.TryGetValue("licInfo_name", out s)){
-                String p = "";
-                String d = "";
-                opts.TryGetValue("licInfo_name", out p);
-                opts.TryGetValue("licInfo_autodl", out d);
-                cmdsOut += " -licname " + s + " -licpwd " + p + (d.Equals("1") ? " -licweb" : "");
+            if (opts.TryGetValue("licname", out s)){
+                object p = "";
+                object d = false;
+                opts.TryGetValue("licpwd", out p);
+                opts.TryGetValue("licweb", out d);
+                cmdsOut += " -licname " + s + " -licpwd " + p + ((bool) d ? " -licweb" : "");
             } else {
-                if (!opts.TryGetValue("keyCode", out s)){
+                if (!opts.TryGetValue("kc", out s)){
                     setKeyName("demo");
                 }
             }
-            if (opts.TryGetValue("keyCode", out s))
+            if (opts.TryGetValue("kc", out s))
                 cmdsOut += " -kc " + s;
-            if (opts.TryGetValue("keyName", out s))
+            if (opts.TryGetValue("kn", out s))
                 cmdsOut += " -kn " + s;
 
             cmdsOut += (!log.Equals("") ? " -log " + '"' + log + '"' : "")
                 + " -port " + port + " -pool " + pool + " -host " + host;
             startInfo.Arguments = "-server " + cmdsOut;            
             (bytes, errMsg) = runProcess(startInfo, false);
-            opts.Remove("licInfo_name");
-            opts.Remove("licInfo_pwd");
-            opts.Remove("licInfo_autodl");
-            opts.Remove("keyName");
-            opts.Remove("keyCode");
+            opts.Remove("licname");
+            opts.Remove("licpwd");
+            opts.Remove("licweb");
+            opts.Remove("kn");
+            opts.Remove("kc");
             return errMsg;
         }
 
@@ -301,11 +301,11 @@ namespace FyTek
             String errMsg = "";
             String buildResult = "";
             String tempFile = "";
-            String s = "";
+            object s = "";
 
            if (opts.TryGetValue("datafield", out s)){
              tempFile = $@"{Guid.NewGuid()}.dat"; // come up with unique file name
-             byte[] b = System.Text.Encoding.UTF8.GetBytes(s);
+             byte[] b = System.Text.Encoding.UTF8.GetBytes((String) s);
              sendFileTCP(tempFile, "", b);
              setInFile(tempFile);
            }
@@ -331,7 +331,7 @@ namespace FyTek
         // Send all files to server - only necessary if server is on a different box
         [ComVisible(true)]
         public void setAutoSendFiles(){
-          setOpt("autoSend","Y");
+          setOpt("autosend",true);
         }
 
         // Pass file contents in memory for input type files
@@ -371,10 +371,10 @@ namespace FyTek
                 string res = wClient.DownloadString("http://www.fytek.com/cgi-bin/genkeyw_v2.cgi?prod=meld");
                 Regex regex = new Regex("-kc [A-Z0-9]*");
                 Match match = regex.Match(res);                
-                setOpt("keyName","testkey");
-                setOpt("keyCode",match.Value.Substring(4));
+                setOpt("kn","testkey");
+                setOpt("kc",match.Value.Substring(4));
             } else {
-                setOpt("keyName",a);
+                setOpt("kn",a);
             }
             return a;
         }
@@ -383,7 +383,7 @@ namespace FyTek
         [ComVisible(true)]
         public String setKeyCode(String a)
         {
-            setOpt("keyCode",a);
+            setOpt("kc",a);
             return a;
         }
 
@@ -393,16 +393,30 @@ namespace FyTek
             String licPwd,
             int autoDownload)
         {
-            setOpt("licInfo_name",licName);
-            setOpt("licInfo_pwd",licPwd);
-            setOpt("licInfo_autodl",$"{autoDownload}");
+            setOpt("licname",licName);
+            setOpt("licpwd",licPwd);
+            if (autoDownload == 1){
+                setOpt("licweb",true);
+            }
+        }
+
+        [ComVisible(true)]
+        public void licInfo(String licName,
+            String licPwd,
+            bool autoDownload)
+        {
+            setOpt("licname",licName);
+            setOpt("licpwd",licPwd);
+            if (autoDownload){
+                setOpt("licweb",true);
+            }
         }
 
         // Assign the user
         [ComVisible(true)]
         public String setUser(String a)
         {
-            setOpt("user",a);
+            setOpt("u",a);
             return a;
         }
 
@@ -410,7 +424,7 @@ namespace FyTek
         [ComVisible(true)]
         public String setOwner(String a)
         {
-            setOpt("owner",a);
+            setOpt("o",a);
             return a;
         }
 
@@ -418,35 +432,35 @@ namespace FyTek
         [ComVisible(true)]
         public void setNoAnnote()
         {
-            setOpt("noAnnote","Y");
+            setOpt("noannote",true);
         }
 
         // Set no copy
         [ComVisible(true)]
         public void setNoCopy()
         {
-            setOpt("noCopy","Y");
+            setOpt("nocopy",true);
         }
 
         // Set no change
         [ComVisible(true)]
         public void setNoChange()
         {
-            setOpt("noChange","Y");
+            setOpt("nochange",true);
         }
 
         // Set no print
         [ComVisible(true)]
         public void setNoPrint()
         {
-            setOpt("noPrint","Y");
+            setOpt("noprint",true);
         }
 
         // Set the GUI process window off
         [ComVisible(true)]
         public void setGUIOff()
         {
-            setOpt("guiOff","Y");
+            setOpt("guioff",true);
         }
 
         // Legacy support
@@ -460,7 +474,7 @@ namespace FyTek
         [ComVisible(true)]
         public String setCmdlineOpts(String a)
         {
-            String s = "";
+            object s = "";
             if (opts.TryGetValue("extOpts", out s))
                 a = s + " " + a;
             setOpt("extOpts",a);
@@ -479,7 +493,7 @@ namespace FyTek
         [ComVisible(true)]
         public String setInFile(String a)
         {
-            String s = "";
+            object s = "";
             a = a.Replace(",","\\,");
             if (opts.TryGetValue("inFile", out s))
                 a = s + "," + a;
@@ -499,21 +513,25 @@ namespace FyTek
         [ComVisible(true)]
         public void setOptimize(bool compress = true)
         {
-            setOpt("opt",compress ? "Y" : "N");
+            if (compress){
+                setOpt("opt",true);
+            } else {
+                setOpt("opt15",true);
+            }            
         }
 
         // Compression 1.5
         [ComVisible(true)]
         public void setComp15()
         {
-            setOpt("comp15","Y");
+            setOpt("comp15",true);
         }
 
         // Encrypt 128
         [ComVisible(true)]
         public void setEncrypt128()
         {
-            setOpt("enc128","Y");
+            setOpt("e128",true);
         }
 
         // AES 128
@@ -528,28 +546,28 @@ namespace FyTek
         [ComVisible(true)]
         public void setForce()
         {
-            setOpt("force","Y");
+            setOpt("force",true);
         }
 
         // open output
         [ComVisible(true)]
         public void setOpen()
         {
-            setOpt("open","Y");
+            setOpt("open",true);
         }        
 
         // print output
         [ComVisible(true)]
         public void setPrint()
         {
-            setOpt("print","Y");
+            setOpt("print",true);
         }        
 
         // buildlog file
         [ComVisible(true)]
         public String setBuildLog(String fileName)
         {
-            setOpt("buildLog",fileName);
+            setOpt("buildlog",fileName);
             return fileName;
         }      
 
@@ -612,37 +630,37 @@ namespace FyTek
         [ComVisible(true)]
         public void setOverlay()
         {
-            setOpt("overlay","Y");
+            setOpt("overlay",true);
         }      
 
         [ComVisible(true)]
         public void setRevOverlay()
         {
-            setOpt("revoverlay","Y");
+            setOpt("revoverlay",true);
         }      
 
         [ComVisible(true)]
         public void setOverlay2()
         {
-            setOpt("overlay2","Y");
+            setOpt("overlay2",true);
         }      
 
         [ComVisible(true)]
         public void setRevOverlay2()
         {
-            setOpt("revoverlay2","Y");
+            setOpt("revoverlay2",true);
         }      
 
         [ComVisible(true)]
         public void setRepeat()
         {
-            setOpt("repeat","Y");
+            setOpt("repeat",true);
         }      
 
         [ComVisible(true)]
         public void setRepeatLast()
         {
-            setOpt("repeatlast","Y");
+            setOpt("repeatlast",true);
         }      
         
         [ComVisible(true)]
@@ -658,13 +676,13 @@ namespace FyTek
         [ComVisible(true)]
         public void setAutoRotate()
         {
-            setOpt("autorotate","Y");
+            setOpt("autorotate",true);
         }      
 
         [ComVisible(true)]
         public String setFieldsFlatten(String a = "")
         {
-            setOpt("flatten",a);
+            setOpt("flatten" + (a.Equals("") ? "" : "sig"),true);
             return a;
         }      
 
@@ -723,7 +741,7 @@ namespace FyTek
         [ComVisible(true)]
         public void setPageNum()
         {
-            setOpt("pagenum","Y");
+            setOpt("pagenum",true);
         }      
 
         [ComVisible(true)]
@@ -736,7 +754,7 @@ namespace FyTek
         [ComVisible(true)]
         public void setPageTop()
         {
-            setOpt("pagetop","Y");
+            setOpt("pagetop",true);
         }      
 
         [ComVisible(true)]
@@ -775,14 +793,14 @@ namespace FyTek
         [ComVisible(true)]        
         public String setBookmarkKeep(String a = "")
         {          
-            setOpt("bmkeep",a);
+            setOpt("bmkeep" + (a.Equals("") ? "" : "nofit"),true);
             return a;
         }      
 
         [ComVisible(true)]
         public void setNoBookmarks()
         {
-            setOpt("nobm","Y");
+            setOpt("nobm",true);
         }      
 
         [ComVisible(true)]        
@@ -795,7 +813,7 @@ namespace FyTek
         [ComVisible(true)]
         public void setSkipFieldRename()
         {
-            setOpt("skipfieldrename","Y");
+            setOpt("skipfieldrename",true);
         }      
 
         [ComVisible(true)]        
@@ -808,25 +826,25 @@ namespace FyTek
         [ComVisible(true)]        
         public String setDataPDF(String fileName, String options)
         {   
-            String s = "";
+            object s = "";
             opts.TryGetValue("datafield", out s);
             fileName = fileName.Replace("\"","\\\"");
             s += $"<PDF SRC=\"{fileName}\" {options}>\n";
             setOpt("datafield",s);
-            setOpt("data","Y");
+            setOpt("data",true);
             return fileName;
         }              
 
         [ComVisible(true)]        
         public String setDataField(String field, String value)
         {   
-            String s = "";
+            object s = "";
             opts.TryGetValue("datafield", out s);
             field = field.Replace("\"","\\\"");
             value = value.Replace("\"","\\\"");
             s += $"<FDFFIELD NAME=\"{field}\" VALUE=\"{value}\">\n";
             setOpt("datafield",s);
-            setOpt("data","Y");
+            setOpt("data",true);
             return value;
         }        
 
@@ -840,13 +858,13 @@ namespace FyTek
         [ComVisible(true)]        
         public void setData()
         {   
-            setOpt("data","Y");
+            setOpt("data",true);
         }              
 
         [ComVisible(true)]        
         public void setPageCenter()
         {   
-            setOpt("center","Y");
+            setOpt("center",true);
         }     
 
         [ComVisible(true)]
@@ -878,7 +896,7 @@ namespace FyTek
         [ComVisible(true)]        
         public void setPageNumReset()
         {          
-            setOpt("pagenumreset","Y");
+            setOpt("pagenumreset",true);
         }      
 
         [ComVisible(true)]        
@@ -905,7 +923,7 @@ namespace FyTek
         [ComVisible(true)]        
         public void setBookmarkTitle()
         {          
-            setOpt("bmtitle","Y");
+            setOpt("bmtitle",true);
         }      
 
         [ComVisible(true)]        
@@ -946,37 +964,37 @@ namespace FyTek
         [ComVisible(true)]        
         public void setAutoClip()
         {          
-            setOpt("autoclip","Y");
+            setOpt("autoclip",true);
         }      
 
         [ComVisible(true)]        
         public void setFieldsRemove()
         {          
-            setOpt("removeflds","Y");
+            setOpt("removeflds",true);
         }      
 
         [ComVisible(true)]        
         public void setNoExtract()
         {          
-            setOpt("noextract","Y");
+            setOpt("noextract",true);
         }      
 
         [ComVisible(true)]        
         public void setNoFillIn()
         {          
-            setOpt("nofillin","Y");
+            setOpt("nofillin",true);
         }      
 
         [ComVisible(true)]        
         public void setNoAssemble()
         {          
-            setOpt("noassemble","Y");
+            setOpt("noassemble",true);
         }      
 
         [ComVisible(true)]        
         public void setNoDigital()
         {          
-            setOpt("nodigital","Y");
+            setOpt("nodigital",true);
         }     
 
         // Calls buildPDF or buildPDFTCP
@@ -1077,7 +1095,7 @@ namespace FyTek
             return (errMsg);
         }
 
-        private void setOpt(String k, String v){
+        private void setOpt(String k, object v){
             opts[k] = v;
         }
 
@@ -1121,9 +1139,9 @@ namespace FyTek
 
             try {         
                 
-                String s;
+                object s;
                 if (opts.TryGetValue("serverCmd", out s)){
-                    message = s;
+                    message = (String) s;
                     opts.Remove("serverCmd");
                 } else {
                     message = setBaseOpts();
@@ -1142,7 +1160,7 @@ namespace FyTek
 
         // build the command line string to pass to the executable
         private String setBaseOpts(){
-            String s = "";
+            object s = "";
             String message = "";            
             if (opts.TryGetValue("inFile", out s))
                 message += " \"" + s + "\"";
@@ -1150,164 +1168,18 @@ namespace FyTek
                 if (!s.Equals(""))
                     message += " \"" + s + "\"";
                 }
-            if (opts.TryGetValue("data", out s))
-                message += " -data";
-            if (opts.TryGetValue("keyCode", out s))
-                message += " -kc " + s;
-            if (opts.TryGetValue("keyName", out s))
-                message += " -kn " + s;
-            if (opts.TryGetValue("guiOff", out s))
-                message += " -guioff";
-            if (opts.TryGetValue("comp15", out s))
-                message += " -comp15";
-            if (opts.TryGetValue("opt", out s))
-                message += " -opt" + (s.Equals("Y") ? "15" : "");
-            if (opts.TryGetValue("owner", out s))
-                message += " -o \"" + s + "\"";
-            if (opts.TryGetValue("user", out s))
-                message += " -u \"" + s + "\"";
-            if (opts.TryGetValue("noAnnote", out s))
-                message += " -noannote";
-            if (opts.TryGetValue("noCopy", out s))
-                message += " -nocopy";
-            if (opts.TryGetValue("noPrint", out s))
-                message += " -noprint";
-            if (opts.TryGetValue("noChange", out s))
-                message += " -nochange";
-            if (opts.TryGetValue("nofillin", out s))
-                message += " -nofillin";
-            if (opts.TryGetValue("noassemble", out s))
-                message += " -noassemble";
-            if (opts.TryGetValue("nodigital", out s))
-                message += " -nodigital";
-            if (opts.TryGetValue("noextract", out s))
-                message += " -noextract";
-            if (opts.TryGetValue("enc128", out s))
-                message += " -e128";
-            if (opts.TryGetValue("aes", out s))
-                message += " -aes " + s;
-            if (opts.TryGetValue("extOpts", out s))
-                message += " " + s;
-            if (opts.TryGetValue("force", out s))
-                message += " -force";            
-            if (opts.TryGetValue("open", out s))
-                message += " -open";            
-            if (opts.TryGetValue("print", out s))
-                message += " -print";            
-            if (opts.TryGetValue("autoSend", out s))
-                message += " -autosend";                           
-            if (opts.TryGetValue("buildLog", out s))            
-                message += " -buildlog \"" + s + "\" ";            
-            if (opts.TryGetValue("debug", out s))
-                message += " -debug \"" + s + "\" ";            
-            if (opts.TryGetValue("errFile", out s))
-                message += " -e \"" + s + "\" ";            
-            if (opts.TryGetValue("licInfo_name", out s)){
-                String p = "";
-                String d = "";
-                opts.TryGetValue("licInfo_name", out p);
-                opts.TryGetValue("licInfo_autodl", out d);
-                message += " -licname " + s + " -licpwd " + p + (d.Equals("1") ? " -licweb" : "");
-            }
-            if (opts.TryGetValue("author", out s))
-                message += " -author \"" + s + "\" ";            
-            if (opts.TryGetValue("keywords", out s))
-                message += " -keywords \"" + s + "\" ";            
-            if (opts.TryGetValue("creator", out s))
-                message += " -creator \"" + s + "\" ";            
-            if (opts.TryGetValue("producer", out s))
-                message += " -producer \"" + s + "\" ";  
-            if (opts.TryGetValue("overlay", out s))
-                message += " -overlay";  
-            if (opts.TryGetValue("revoverlay", out s))
-                message += " -revoverlay";  
-            if (opts.TryGetValue("overlay2", out s))
-                message += " -overlay2";  
-            if (opts.TryGetValue("revoverlay2", out s))
-                message += " -revoverlay2";  
-            if (opts.TryGetValue("repeat", out s))
-                message += " -repeat";  
-            if (opts.TryGetValue("repeatlast", out s))
-                message += " -repeatlast";  
-            if (opts.TryGetValue("pages", out s))
-                message += " -pages \"" + s + "\" ";  
-            if (opts.TryGetValue("autorotate", out s))
-                message += " -autorotate";  
-            if (opts.TryGetValue("flatten", out s))
-                message += " -flatten" + (!s.Equals("") ? "sig" : "");  
-            if (opts.TryGetValue("pagesize", out s))
-                message += " -pagesize " + s;  
-            if (opts.TryGetValue("pagenum", out s))
-                message += " -pagenum";  
-            if (opts.TryGetValue("pagenumalign", out s))
-                message += " -pagenumalign " + s;  
-            if (opts.TryGetValue("pagetop", out s))
-                message += " -pagetop";  
-            if (opts.TryGetValue("pagelmargin", out s))
-                message += " -pagelmargin " + s;  
-            if (opts.TryGetValue("pagebmargin", out s))
-                message += " -pagebmargin " + s;  
-            if (opts.TryGetValue("pagenumreset", out s))
-                message += " -pagenumreset";  
-            if (opts.TryGetValue("bmkeep", out s))
-                message += " -bmkeep" + (!s.Equals("") ? "nofit" : "");  
-            if (opts.TryGetValue("nobm", out s))
-                message += " -nobm";  
-            if (opts.TryGetValue("bm", out s))
-                message += " -bm \"" + s + "\" ";  
-            if (opts.TryGetValue("skipfieldrename", out s))
-                message += " -skipfieldrename";  
-            if (opts.TryGetValue("zoom", out s))
-                message += " -zoom " + s;  
-            if (opts.TryGetValue("fontsize", out s))
-                message += " -fontsize " + s;  
-            if (opts.TryGetValue("pagefmt", out s))
-                message += " -pagefmt \"" + s + "\" ";  
-            if (opts.TryGetValue("pageord", out s))
-                message += " -pageord \"" + s + "\" ";  
-            if (opts.TryGetValue("center", out s))
-                message += " -center";  
-            if (opts.TryGetValue("scale", out s))
-                message += " -scale \"" + s + "\" ";  
-            if (opts.TryGetValue("scalex", out s))
-                message += " -scalex \"" + s + "\" ";  
-            if (opts.TryGetValue("scaley", out s))
-                message += " -scaley \"" + s + "\" ";  
-            if (opts.TryGetValue("right", out s))
-                message += " -right \"" + s + "\" ";  
-            if (opts.TryGetValue("down", out s))
-                message += " -down \"" + s + "\" ";  
-            if (opts.TryGetValue("strin", out s))
-                message += " -strin \"" + s + "\" ";  
-            if (opts.TryGetValue("filesep", out s))
-                message += " -filesep \"" + s + "\" ";  
-            if (opts.TryGetValue("exclude", out s))
-                message += " -exclude";  
-            if (opts.TryGetValue("subset", out s))
-                message += " -subset \"" + s + "\" ";  
-            if (opts.TryGetValue("pwdlist", out s))
-                message += " -pwdlist \"" + s + "\" ";  
-            if (opts.TryGetValue("bmtitle", out s))
-                message += " -bmtitle";  
-            if (opts.TryGetValue("log", out s))
-                message += " -log \"" + s + "\" ";  
-            if (opts.TryGetValue("pagenumfont", out s))
-                message += " -pagenumfont \"" + s + "\" ";  
-            if (opts.TryGetValue("pagenumcolor", out s))
-                message += " -pagenumcolor \"" + s + "\" ";  
-            if (opts.TryGetValue("pagenumbgcolor", out s))
-                message += " -pagenumbgcolor \"" + s + "\" ";  
-            if (opts.TryGetValue("autoscale", out s))
-                message += " -autoscale \"" + s + "\" ";  
-            if (opts.TryGetValue("autoclip", out s))
-                message += " -autoclip";  
-            if (opts.TryGetValue("removeflds", out s))
-                message += " -removeflds";  
-            if (opts.TryGetValue("creationdate", out s))
-                message += " -creationdate \"" + s + "\" ";  
-            if (opts.TryGetValue("moddate", out s))
-                message += " -moddate \"" + s + "\" ";  
-                Console.WriteLine(message);
+            foreach (KeyValuePair<string,object> opt in opts){
+                if (!opt.Key.Equals("inFile") && !opt.Key.Equals("outFile")){
+                    if (opt.Key.Equals("extOpts")){
+                        message += " " + opt.Value + " ";
+                    } else {
+                        message += " -" + opt.Key;
+                        if (!(opt.Value is bool)){
+                            message += " \"" + opt.Value.ToString().Replace("\"","\\\"");
+                        }
+                    }                
+                }
+            }               
             return message;                         
         }
     
@@ -1331,7 +1203,7 @@ namespace FyTek
 
             errMsg = sendTCP();
             if (errMsg.Equals("")){
-                if (opts.TryGetValue("autoSend", out String s))
+                if (opts.TryGetValue("autosend", out object s))
                   retPDF = true; // need to keep open and send files
             }
             if (!saveFile.Equals("")){
