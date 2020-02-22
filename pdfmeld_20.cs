@@ -1175,7 +1175,7 @@ namespace FyTek
                     } else {
                         message += " -" + opt.Key;
                         if (!(opt.Value is bool)){
-                            message += " \"" + opt.Value.ToString().Replace("\"","\\\"");
+                            message += " \"" + opt.Value.ToString().Replace("\"","\\\"") + "\"";
                         }
                     }                
                 }
