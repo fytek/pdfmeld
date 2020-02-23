@@ -726,7 +726,6 @@ namespace FyTek
               unitsMult = 1;
               break;
           }
-          setOpt("units",a);
           return a;
         }      
 
