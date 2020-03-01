@@ -229,6 +229,7 @@ namespace FyTek
                 }
                 setOpt("serverCmd", "-serverstat");
                 res = callTCP(isStatus: true);
+                msg = res.msg;
             }
             else
             {
@@ -1221,6 +1222,7 @@ namespace FyTek
             // Call WaitForExit if we are waiting for process to complete. 
             BuildResults res = new BuildResults();
             byte[] bytes = { };
+            res.msg = "OK";
             try
             {
                 using (Process exeProcess = Process.Start(startInfo))
@@ -1245,8 +1247,7 @@ namespace FyTek
             {
                 res.msg = e.Message;
             }
-            res.bytes = bytes;
-            res.msg = "OK";
+            res.bytes = bytes;            
             return res;
 
         }
@@ -1507,6 +1508,9 @@ namespace FyTek
             client.Close();
             res.bytes = bytes;
             res.msg = responseData.Equals("") ? errMsg : responseData.Trim();
+            if (res.msg.Equals("")){
+                res.msg = "OK";
+            }
             res.result = buildResult.Trim();
             res.pages = numPages;
             res.gDriveOcr = gDriveOcr;
