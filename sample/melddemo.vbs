@@ -17,7 +17,7 @@ set meldObj = CreateObject("FyTek.PDFMeld")
 
 ' Set the location of the executable - only needed if we are starting the server or not using 
 ' a server.  When a server is used, only the host and port are needed.
-' meldObj.setExe("C:\<path to where exe is instaled>\pdfmeld.exe")
+' meldObj.setExe("C:\<path to where exe is installed>\pdfmeld.exe")
  
 ' Needed to test server mode - in produciton, use setKeyName and setKeyCode with your values.  
 ' Or use licInfo method to set your license info.
