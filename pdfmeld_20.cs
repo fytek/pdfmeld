@@ -836,6 +836,20 @@ namespace FyTek
             setOpt("bm", a);
             return a;
         }
+        
+        [ComVisible(true)]
+        public String setBookmarkAdd(String a)
+        {
+            setOpt("bmadd", a);
+            return a;
+        }
+
+        [ComVisible(true)]
+        public String setTitle(String a)
+        {
+            setOpt("title", a);
+            return a;
+        }
 
         [ComVisible(true)]
         public void setSkipFieldRename() => setOpt("skipfieldrename", true);
