@@ -50,7 +50,7 @@ namespace FyTek
         private TcpClient client = new TcpClient();
         private NetworkStream stream;
         private String exe = "pdfmeld64"; // the executable - change with setExe
-        private const String srvHost = "localhost";
+        private const String srvHost = "127.0.0.1"; // localhost (note 127.0.0.1 connects faster than localhost)
         private const int srvPort = 7070;
         private const int srvPool = 5;
         private static String srvFile = ""; // the file of servers and ports
@@ -366,7 +366,7 @@ namespace FyTek
                 }
             }
 
-            res = callTCP(retBytes: retBytes, saveFile: saveFile);
+            res = callTCP(retBytes: retBytes, saveFile: saveFile); 
 
             if (useAvailSrv)
             {
@@ -850,7 +850,7 @@ namespace FyTek
           setOpt("title", a);
           return a;
         }
-
+        
         [ComVisible(true)]
         public void setSkipFieldRename() => setOpt("skipfieldrename", true);
 
@@ -1382,8 +1382,10 @@ namespace FyTek
                     data = System.Text.Encoding.ASCII.GetBytes(" -return ");
                     stream.Write(data, 0, data.Length);
                 }
+                
                 data = System.Text.Encoding.ASCII.GetBytes("\nBUILDPDF\n");
                 stream.Write(data, 0, data.Length);
+
                 if (isStatus)
                 {
                     do
@@ -1395,7 +1397,7 @@ namespace FyTek
                     }
                     while (stream.DataAvailable);
                 }
-                else if (!isStop)
+                else if (!isStop && (retPDF || retBytes))
                 {
                     MemoryStream memstream = new MemoryStream();
                     Socket s = client.Client;
