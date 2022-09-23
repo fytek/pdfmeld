@@ -37,15 +37,17 @@ set meldObj = CreateObject("FyTek.PDFMeld")
 ' # here are the servers
 ' 192.168.1.124 7070
 ' 192.168.1.125 7070
-' localhost 7070
+' 127.0.0.1 7070
 ' meldObj.setServerFile("servers.dat") 
+or 
+meldObj.setServer "127.0.0.1",7070
 
 ' In a real situation where server is already running and there is no server
-' setting file (setServerFile call that provides a file of one or more Report Writer servers)
+' setting file (setServerFile call that provides a file of one or more PDF Meld servers)
 ' then you might need to set the values here so the program knows the box and port to use.
 ' For example, when the server is running off of a Linux server on box 192.168.1.124:
 ' meldObj.setServer "192.168.1.124",7070
-' If the Report Writer server is on a different box (not localhost for example) then you might
+' If the PDF Meld server is on a different box (not localhost for example) then you might
 ' want to set this option that will auto send any files from this box to the server so it has
 ' all the needed files to build the PDF.  Or, use the sendFileTCP method to provide the files
 ' one at a time.  If more than one or you have included images, fonts, then may be easier to juse
@@ -61,7 +63,10 @@ cmd = meldObj.setPageNum() ' add page numbers
 ' Add other methods here for various settings then build the PDF
 
 
-' Create the PDF and get back the byte array - or pass false to not wait for the PDF to be returned
+' Create the PDF and get back the byte array - or pass false to not wait for the PDF to be returned.
+' If setting to false, use setOutFile to specify the output file name.
+' Program execution will continue when setting to false and not wait for the PDF to be build which
+' will be faster if you are building multiple PDFs from a single call to your program.
 Set d = meldObj.buildPDF (true)
 ' d.bytes() will contain the newly build PDF - we'll save to a file but you might want to 
 ' display on a web page or save in a database
