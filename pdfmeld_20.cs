@@ -30,9 +30,11 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 // Compiling this code:
-// Microsoft.Net.Compilers.3.4.0\tools\csc /target:library /platform:anycpu /out:pdfmeld_20.dll pdfmeld_20.cs /keyfile:mykey.snk
+// csc /target:library /platform:anycpu /out:pdfmeld_20.dll pdfmeld_20.cs /keyfile:mykey.snk
 // C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe /codebase c:pdfmeld_20.dll
 // cscript.exe (or wscript.exe) rwtest.vbs
 
@@ -344,15 +346,18 @@ namespace FyTek
         // raw bytes of the PDF for further processing when retBytes = true
         // optional file name as well if saveFile is passed - this allows
         // for saving file on this box if server is running on different box
-        private object buildPDFTCP(bool retBytes = false, String saveFile = "")
+        private BuildResults buildPDFTCP(bool retBytes = false
+            , String saveFile = ""
+            , Dictionary<string, object> vOpts = null
+        )
         {
             BuildResults res = new BuildResults();
             String tempFile = "";
             object s = "";
 
-            if (opts.TryGetValue("datafield", out s))
+            if (vOpts.TryGetValue("datafield", out s))
             {
-                tempFile = $@"{Guid.NewGuid()}.dat"; // come up with unique file name
+                tempFile = string.Format(@"{Guid.NewGuid()}.dat"); // come up with unique file name
                 byte[] b = System.Text.Encoding.UTF8.GetBytes((String)s);
                 sendFileTCP(tempFile, "", b);
                 setInFile(tempFile);
@@ -360,13 +365,13 @@ namespace FyTek
 
             if (!saveFile.Equals("") || retBytes)
             {
-                if (!opts.TryGetValue("outFile", out s))
+                if (!vOpts.TryGetValue("outFile", out s))
                 {
                     setOutFile("membuild");
                 }
             }
 
-            res = callTCP(retBytes: retBytes, saveFile: saveFile); 
+            res = callTCP(retBytes: retBytes, saveFile: saveFile, vOpts: vOpts);
 
             if (useAvailSrv)
             {
@@ -481,23 +486,23 @@ namespace FyTek
 
         // Set no annote
         [ComVisible(true)]
-        public void setNoAnnote() => setOpt("noannote", true);
+        public void setNoAnnote() {setOpt("noannote", true);}
 
         // Set no copy
         [ComVisible(true)]
-        public void setNoCopy() => setOpt("nocopy", true);
+        public void setNoCopy() {setOpt("nocopy", true);}
 
         // Set no change
         [ComVisible(true)]
-        public void setNoChange() => setOpt("nochange", true);
+        public void setNoChange() {setOpt("nochange", true);}
 
         // Set no print
         [ComVisible(true)]
-        public void setNoPrint() => setOpt("noprint", true);
+        public void setNoPrint() {setOpt("noprint", true);}
 
         // Set the GUI process window off
         [ComVisible(true)]
-        public void setGUIOff() => setOpt("guioff", true);
+        public void setGUIOff() {setOpt("guioff", true);}
 
         // Legacy support
         [ComVisible(true)]
@@ -576,7 +581,7 @@ namespace FyTek
 
         // Compression 1.5
         [ComVisible(true)]
-        public void setComp15() => setOpt("comp15", true);
+        public void setComp15() {setOpt("comp15", true);}
 
         // Encrypt 128
         [ComVisible(true)]
@@ -607,15 +612,23 @@ namespace FyTek
 
         // overwrite existing
         [ComVisible(true)]
-        public void setForce() => setOpt("force", true);
+        public void setForce() {setOpt("force", true);}
 
         // open output
         [ComVisible(true)]
-        public void setOpen() => setOpt("open", true);
+        public void setOpen() {setOpt("open", true);}
 
         // print output
         [ComVisible(true)]
-        public void setPrint() => setOpt("print", true);
+        public void setPrint() {setOpt("print", true);}
+
+        // duplex
+        [ComVisible(true)]
+        public String setPrintDuplex(String a)
+        {
+            setOpt("printduplex", a);
+            return a;
+        }
 
         // buildlog file
         [ComVisible(true)]
@@ -682,22 +695,22 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setOverlay() => setOpt("overlay", true);
+        public void setOverlay() {setOpt("overlay", true);}
 
         [ComVisible(true)]
-        public void setRevOverlay() => setOpt("revoverlay", true);
+        public void setRevOverlay() {setOpt("revoverlay", true);}
 
         [ComVisible(true)]
-        public void setOverlay2() => setOpt("overlay2", true);
+        public void setOverlay2() {setOpt("overlay2", true);}
 
         [ComVisible(true)]
-        public void setRevOverlay2() => setOpt("revoverlay2", true);
+        public void setRevOverlay2() {setOpt("revoverlay2", true);}
 
         [ComVisible(true)]
-        public void setRepeat() => setOpt("repeat", true);
+        public void setRepeat() {setOpt("repeat", true);}
 
         [ComVisible(true)]
-        public void setRepeatLast() => setOpt("repeatlast", true);
+        public void setRepeatLast() {setOpt("repeatlast", true);}
 
         [ComVisible(true)]
         public String setPages(String a, bool exclude = false)
@@ -711,7 +724,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setAutoRotate() => setOpt("autorotate", true);
+        public void setAutoRotate() {setOpt("autorotate", true);}
 
         [ComVisible(true)]
         public String setFieldsFlatten(String a = "")
@@ -773,7 +786,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setPageNum() => setOpt("pagenum", true);
+        public void setPageNum() {setOpt("pagenum", true);}
 
         [ComVisible(true)]
         public Double setFontSize(Double a)
@@ -783,7 +796,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setPageTop() => setOpt("pagetop", true);
+        public void setPageTop() {setOpt("pagetop", true);}
 
         [ComVisible(true)]
         public String setPageFmt(String a)
@@ -828,7 +841,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setNoBookmarks() => setOpt("nobm", true);
+        public void setNoBookmarks() {setOpt("nobm", true);}
 
         [ComVisible(true)]
         public String setBookmarkFile(String a)
@@ -836,7 +849,7 @@ namespace FyTek
             setOpt("bm", a);
             return a;
         }
-        
+
         [ComVisible(true)]
         public String setBookmarkAdd(String a)
         {
@@ -850,9 +863,9 @@ namespace FyTek
           setOpt("title", a);
           return a;
         }
-        
+
         [ComVisible(true)]
-        public void setSkipFieldRename() => setOpt("skipfieldrename", true);
+        public void setSkipFieldRename() {setOpt("skipfieldrename", true);}
 
         [ComVisible(true)]
         public String setZoom(String a)
@@ -867,7 +880,7 @@ namespace FyTek
             object s = "";
             opts.TryGetValue("datafield", out s);
             fileName = fileName.Replace("\"", "\\\"");
-            s += $"<PDF SRC=\"{fileName}\" {options}>\n";
+            s += string.Format("<PDF SRC=\"{fileName}\" {options}>\n");
             setOpt("datafield", s);
             setOpt("data", true);
             return fileName;
@@ -880,9 +893,16 @@ namespace FyTek
             opts.TryGetValue("datafield", out s);
             field = field.Replace("\"", "\\\"");
             value = value.Replace("\"", "\\\"");
-            s += $"<FDFFIELD NAME=\"{field}\" VALUE=\"{value}\">\n";
+            s += string.Format("<FDFFIELD NAME=\"{field}\" VALUE=\"{value}\">\n");
             setOpt("datafield", s);
             setOpt("data", true);
+            return value;
+        }
+
+        [ComVisible(true)]
+        public String setDocAction(String act, String value)
+        {
+            setOpt("docaction", act + "," + value);
             return value;
         }
 
@@ -894,10 +914,10 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setData() => setOpt("data", true);
+        public void setData() {setOpt("data", true);}
 
         [ComVisible(true)]
-        public void setPageCenter() => setOpt("center", true);
+        public void setPageCenter() {setOpt("center", true);}
 
         [ComVisible(true)]
         public Double setPageScale(Double x, Double y = 0)
@@ -929,7 +949,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setPageNumReset() => setOpt("pagenumreset", true);
+        public void setPageNumReset() {setOpt("pagenumreset", true);}
 
         [ComVisible(true)]
         public String setStrFileIn(String a)
@@ -953,7 +973,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setBookmarkTitle() => setOpt("bmtitle", true);
+        public void setBookmarkTitle() {setOpt("bmtitle", true);}
 
         [ComVisible(true)]
         public String setLogFile(String a)
@@ -991,22 +1011,22 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setAutoClip() => setOpt("autoclip", true);
+        public void setAutoClip() {setOpt("autoclip", true);}
 
         [ComVisible(true)]
-        public void setFieldsRemove() => setOpt("removeflds", true);
+        public void setFieldsRemove() {setOpt("removeflds", true);}
 
         [ComVisible(true)]
-        public void setNoExtract() => setOpt("noextract", true);
+        public void setNoExtract() {setOpt("noextract", true);}
 
         [ComVisible(true)]
-        public void setNoFillIn() => setOpt("nofillin", true);
+        public void setNoFillIn() {setOpt("nofillin", true);}
 
         [ComVisible(true)]
-        public void setNoAssemble() => setOpt("noassemble", true);
+        public void setNoAssemble() {setOpt("noassemble", true);}
 
         [ComVisible(true)]
-        public void setNoDigital() => setOpt("nodigital", true);
+        public void setNoDigital() {setOpt("nodigital", true);}
 
         [ComVisible(true)]
         public String setGDriveJSON(String fileName,
@@ -1035,7 +1055,7 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setGDriveSave() => setOpt("gdrivesave", true);
+        public void setGDriveSave() {setOpt("gdrivesave", true);}
 
         [ComVisible(true)]
         public String setGDriveLog(String fileName)
@@ -1053,10 +1073,10 @@ namespace FyTek
         }
 
         [ComVisible(true)]
-        public void setGDriveOCR() => setOpt("gdriveocr", true);
+        public void setGDriveOCR() {setOpt("gdriveocr", true);}
 
         [ComVisible(true)]
-        public void setGDriveOCRSave() => setOpt("gdriveocrsave", true);
+        public void setGDriveOCRSave() {setOpt("gdriveocrsave", true);}
 
         [ComVisible(true)]
         public char setGDriveOCRPDF(char a)
@@ -1116,30 +1136,47 @@ namespace FyTek
 
         // Calls buildPDF or buildPDFTCP
         [ComVisible(true)]
-        public object buildPDF(bool waitForExit = true,
-            String saveFile = "")
+        public BuildResults buildPDF(bool waitForExit = true,
+            String saveFile = "",
+            Dictionary<string, object> vOpts = null)
         {
             object host;
+            if (vOpts == null){
+                vOpts = opts;
+            }
             if (server.TryGetValue("host", out host)
                 || servers.Count > 0)
             {
                 // if there is a server or servers, build using TCP                 
                 // waitForExit means return the byte array of the PDF
-                return buildPDFTCP(waitForExit, saveFile);
+                return buildPDFTCP(waitForExit, saveFile,vOpts);
             }
             else
             {
                 // otherwise, build using the executable
                 if (!saveFile.Equals(""))
                 {
-                    setOutFile(saveFile); // shorthand for calling setOutFile
+                    vOpts["outFile"] = saveFile;
                 }
-                return build(waitForExit);
+                return build(waitForExit,vOpts);
             }
         }
 
+        // Calls buildPDF or buildPDFTCP async mode
+        [ComVisible(true)]
+        public async Task<BuildResults> buildPDFAsync (
+            String saveFile = "")
+        {
+            var vOpts = new Dictionary<string, object>(opts);
+
+            BuildResults res = new BuildResults();
+            res = await Task.Run(() => {return buildPDF(true, saveFile, vOpts);});
+            return res;
+        }
+
         // Call the executable (non server mode)
-        private object build(bool waitForExit = true)
+        private BuildResults build(bool waitForExit = true,
+            Dictionary<string, object> vOpts = null)
         {
             BuildResults res = new BuildResults();
             byte[] bytes = { };
@@ -1153,7 +1190,7 @@ namespace FyTek
             }
             startInfo.FileName = exe;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.Arguments = setBaseOpts();
+            startInfo.Arguments = setBaseOpts(vOpts);
             res = runProcess(startInfo, waitForExit);
             return res;
         }
@@ -1268,7 +1305,7 @@ namespace FyTek
 
         // Passes data to server over socket but does not finalize 
         // (that is, does not send BUILDPDF command)
-        private String sendTCP()
+        private String sendTCP(Dictionary<string, object> vOpts)
         {
             String errMsg = "";
             Byte[] data;
@@ -1281,14 +1318,14 @@ namespace FyTek
             {
 
                 object s;
-                if (opts.TryGetValue("serverCmd", out s))
+                if (vOpts.TryGetValue("serverCmd", out s))
                 {
                     message = (String)s;
-                    opts.Remove("serverCmd");
+                    vOpts.Remove("serverCmd");
                 }
                 else
                 {
-                    message = setBaseOpts();
+                    message = setBaseOpts(vOpts);
                 }
                 // Send commands
                 data = System.Text.Encoding.UTF8.GetBytes(message);
@@ -1307,18 +1344,18 @@ namespace FyTek
         }
 
         // build the command line string to pass to the executable
-        private String setBaseOpts()
+        private String setBaseOpts(Dictionary<string, object> vOpts)
         {
             object s = "";
             String message = "";
-            if (opts.TryGetValue("inFile", out s))
+            if (vOpts.TryGetValue("inFile", out s))
                 message += " \"" + s + "\"";
-            if (opts.TryGetValue("outFile", out s))
+            if (vOpts.TryGetValue("outFile", out s))
             {
                 if (!s.Equals(""))
                     message += " \"" + s + "\"";
             }
-            foreach (KeyValuePair<string, object> opt in opts)
+            foreach (KeyValuePair<string, object> opt in vOpts)
             {
                 if (!opt.Key.Equals("inFile") && !opt.Key.Equals("outFile"))
                 {
@@ -1343,6 +1380,7 @@ namespace FyTek
         private BuildResults callTCP(bool isStop = false,
             bool isStatus = false,
             bool retBytes = false,
+            Dictionary<string, object> vOpts = null,
             String saveFile = "")
         {
             BuildResults res = new BuildResults();
@@ -1364,10 +1402,11 @@ namespace FyTek
                 return res;
             }
 
-            errMsg = sendTCP();
+            errMsg = sendTCP(vOpts);
             if (errMsg.Equals(""))
             {
-                if (opts.TryGetValue("autosend", out object s))
+                object s = "";
+                if (vOpts.TryGetValue("autosend", out s))
                     retPDF = true; // need to keep open and send files
             }
             if (!saveFile.Equals(""))
@@ -1382,10 +1421,8 @@ namespace FyTek
                     data = System.Text.Encoding.ASCII.GetBytes(" -return ");
                     stream.Write(data, 0, data.Length);
                 }
-                
                 data = System.Text.Encoding.ASCII.GetBytes("\nBUILDPDF\n");
                 stream.Write(data, 0, data.Length);
-
                 if (isStatus)
                 {
                     do
@@ -1397,7 +1434,7 @@ namespace FyTek
                     }
                     while (stream.DataAvailable);
                 }
-                else if (!isStop && (retPDF || retBytes))
+                else if (!isStop)
                 {
                     MemoryStream memstream = new MemoryStream();
                     Socket s = client.Client;
@@ -1553,4 +1590,3 @@ namespace FyTek
 
     }
 }
-
