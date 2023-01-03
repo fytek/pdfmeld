@@ -59,6 +59,7 @@ namespace FyTek
         private static int srvNum = 0; // the array index for the next server to use
         private bool useAvailSrv = false; // true when choosing the next available server
         private Dictionary<string, object> opts = new Dictionary<string, object>(); // all of the parameter settings from the method calls
+        private Dictionary<string, object> xOpts = new Dictionary<string, object>(); // MORE parameter settings to be appended
         private Dictionary<string, object> server = new Dictionary<string, object>(); // the server host/port/log file key/values
 
         private String units = "";
@@ -630,6 +631,46 @@ namespace FyTek
             return a;
         }
 
+        // printscale
+        [ComVisible(true)]
+        public String setPrintScale(String a = "")
+        {
+            setOpt("printscale", a);
+            return a;
+        }
+
+        // pagemode
+        [ComVisible(true)]
+        public String setPageMode(String a = "")
+        {
+            setOpt("pagemode", a);
+            return a;
+        }
+
+        // viewerlayout
+        [ComVisible(true)]
+        public String setViewerLayout(String a = "")
+        {
+            setOpt("viewlo", a);
+            return a;
+        }
+
+        // printpagerange
+        [ComVisible(true)]
+        public String setPrintPageRange(String a = "")
+        {
+            setOpt("printpagerange", a);
+            return a;
+        }
+
+        // fieldbits
+        [ComVisible(true)]
+        public String setFieldBits(String a = "")
+        {
+            setOpt("fieldbits", a);
+            return a;
+        }
+
         // buildlog file
         [ComVisible(true)]
         public String setBuildLog(String fileName)
@@ -650,7 +691,7 @@ namespace FyTek
         [ComVisible(true)]
         public String setErrFile(String fileName)
         {
-            setOpt("errFile", fileName);
+            setOpt("e", fileName);        // not errfile.
             return fileName;
         }
 
@@ -722,6 +763,15 @@ namespace FyTek
             }
             return a;
         }
+
+        [ComVisible(true)]
+        public void setKeepAP() {setOpt("keepap", true);}
+
+        [ComVisible(true)]
+        public void setKeepMK() {setOpt("keepmk", true);}
+
+        [ComVisible(true)]
+        public void setNoApp() {setOpt("noapp", true);}
 
         [ComVisible(true)]
         public void setAutoRotate() {setOpt("autorotate", true);}
@@ -857,6 +907,14 @@ namespace FyTek
           return a;
         }
 
+        // setAttribute
+        [ComVisible(true)]
+        public String setAttribute(String name, String value)
+        {
+            setXopt("attribute " + name, value );
+            return value;
+        }
+
         [ComVisible(true)]
         public String setTitle(String a)
         {
@@ -902,7 +960,7 @@ namespace FyTek
         [ComVisible(true)]
         public String setDocAction(String act, String value)
         {
-            setOpt("docaction", act + "," + value);
+            setXopt("docaction " + act, value);
             return value;
         }
 
@@ -1143,6 +1201,7 @@ namespace FyTek
             object host;
             if (vOpts == null){
                 vOpts = opts;
+                AppendXOPTStoVOPTS(vOpts: vOpts);
             }
             if (server.TryGetValue("host", out host)
                 || servers.Count > 0)
@@ -1200,6 +1259,7 @@ namespace FyTek
         public void resetOpts(bool resetServer = false)
         {
             opts.Clear();
+            xOpts.Clear();
             unitsMult = 1;
             if (resetServer)
             {
@@ -1265,6 +1325,39 @@ namespace FyTek
         private void setOpt(String k, object v)
         {
             opts[k] = v;
+        }
+
+        private void setXopt(String k, object v)
+        {
+            xOpts[k] = v;
+        }
+
+        private void AppendXOPTStoVOPTS(
+            Dictionary<string, object> vOpts = null
+            )
+        {
+             // sort xOpts keys so attributes precede docactions
+             //   as it is safer if all docactions are at the end of parameters.
+             // then append xOpts to vOpts
+             int numxo = 0;
+             foreach (var xopt in xOpts)
+             { numxo++;
+             }
+             if (numxo > 0)
+             {
+               String[] xokeys = new string[numxo];
+               int i = 0;
+               foreach (var xopt in xOpts)
+               { String xkey = xopt.Key;
+                 xokeys[i]= xkey;
+                 i++;
+               }
+               Array.Sort(xokeys);
+               foreach (var xk in xokeys)
+               { vOpts[xk] = xOpts[xk];
+               }
+             }
+             return;
         }
 
         private BuildResults runProcess(ProcessStartInfo startInfo, bool waitForExit)
@@ -1362,6 +1455,12 @@ namespace FyTek
                     if (opt.Key.Equals("extOpts"))
                     {
                         message += " " + opt.Value + " ";
+                    }
+                    else if (opt.Key.Contains(" "))
+                    {
+                        String zkey = opt.Key;
+                        String[] zkeys = zkey.Split(' ');
+                        message += " -" + zkeys[0] + " \"" + zkeys[1] + "," + opt.Value.ToString().Replace("\"", "\\\"") + "\"";
                     }
                     else
                     {
