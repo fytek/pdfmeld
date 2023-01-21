@@ -1112,6 +1112,22 @@ namespace FyTek
             return fileid;
         }
 
+	// timeout		Added by RoL 2023-01-11
+        [ComVisible(true)]
+        public String setTimeout(String a)
+        {
+            setOpt("timeout", a);
+            return a;
+        }
+
+	// prmsave		Added by RoL 2023-01-17
+        [ComVisible(true)]
+        public String setPrmSave(String a)
+        {
+            setOpt("prmsave", a);
+            return a;
+        }
+
         [ComVisible(true)]
         public void setGDriveSave() {setOpt("gdrivesave", true);}
 
