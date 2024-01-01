@@ -36,7 +36,7 @@ using System.Threading.Tasks;
 // Compiling this code:
 // csc /target:library /platform:anycpu /out:pdfmeld_20.dll pdfmeld_20.cs /keyfile:mykey.snk
 // C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe /codebase c:pdfmeld_20.dll
-// cscript.exe (or wscript.exe) rwtest.vbs
+// cscript.exe (or wscript.exe) testprog.vbs
 
 namespace FyTek
 {
@@ -614,6 +614,18 @@ namespace FyTek
         // overwrite existing
         [ComVisible(true)]
         public void setForce() {setOpt("force", true);}
+
+        // set FDF export
+        [ComVisible(true)]
+        public void setFDFFileOut() {setOpt("fdfout", true);}
+
+        // set FDF export XML
+        [ComVisible(true)]
+        public void setFDFFileOutXML() {setOpt("fdfoutxml", true);}
+
+        // set FDF export JSON
+        [ComVisible(true)]
+        public void setFDFFileOutJSON() {setOpt("fdfoutjson", true);}
 
         // open output
         [ComVisible(true)]
