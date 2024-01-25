@@ -56,11 +56,15 @@ namespace FyTek
         private const int srvPort = 7070;
         private const int srvPool = 5;
         private static String srvFile = ""; // the file of servers and ports
+        private bool serverStarted = false; // if a server has been requested
         private static int srvNum = 0; // the array index for the next server to use
         private bool useAvailSrv = false; // true when choosing the next available server
         private Dictionary<string, object> opts = new Dictionary<string, object>(); // all of the parameter settings from the method calls
         private Dictionary<string, object> xOpts = new Dictionary<string, object>(); // MORE parameter settings to be appended
         private Dictionary<string, object> server = new Dictionary<string, object>(); // the server host/port/log file key/values
+        private string tempDir = "";
+        private Dictionary<string, object> dataFiles = new Dictionary<string, object>();
+        private string pdfmeldString = "";
 
         private String units = "";
         private Double unitsMult = 1;
@@ -68,10 +72,16 @@ namespace FyTek
         [ComVisible(true)]
         public class BuildResults
         {
+            // raw bytes from output when wait to build specified on run() or buildPDF()
             public byte[] bytes { get; set; }
+            // any messages
             public String msg { get; set; }
+            // result string
             public String result { get; set; }
+            // pages in output PDF (sever mode only)
             public int pages { get; set; }
+            // the command line options sent when not using a server (if using a server, check the log file set during startServer())
+            public String cmd { get; set; }
             public List<GDriveOcr> gDriveOcr { get; set; }
             public byte[] getOcrFile(String mimeType){
                 try {   
@@ -153,6 +163,7 @@ namespace FyTek
             String log = ""
           )
         {
+            serverStarted = true;
             BuildResults res = new BuildResults();
             server["host"] = host;
             server["port"] = port;
@@ -215,6 +226,7 @@ namespace FyTek
             BuildResults res = new BuildResults();
             setOpt("serverCmd", "-quit");
             res = callTCP(isStop: true);
+            serverStarted = false;
             return res.msg;
         }
 
@@ -272,12 +284,15 @@ namespace FyTek
             setOpt("stopId", "-stopid " + id);
             res = callTCP();
             return res.msg;
-        }
+        }        
 
         // Check server
         [ComVisible(true)]
         public bool isServerRunning()
         {
+            if (!serverStarted){
+                return false;
+            }
             Object host = "";
             int tryCount = 0;
             bool srvRunning = false;
@@ -339,6 +354,34 @@ namespace FyTek
                 {
                     return false;
                 }
+            }
+            return false;
+        }
+
+        // Get a temp directory to use
+        [ComVisible(true)]
+        public string getTempDir() {
+            if (tempDir.Equals("")) {
+                do {
+                    tempDir = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName())) + "\\";
+                } while (Directory.Exists(tempDir));
+                Directory.CreateDirectory(tempDir);
+            }
+            return tempDir;
+        }
+
+        // Clear files from temp directory
+        [ComVisible(true)]
+        public bool clearTempDir() {
+            if (!tempDir.Equals("")) {
+                var dir = new DirectoryInfo(tempDir);
+                foreach (var file in Directory.GetFiles(dir.ToString()))
+                {
+                    File.Delete(file);
+                }
+                Directory.Delete(tempDir,true);
+                tempDir = "";
+                return true;
             }
             return false;
         }
@@ -564,6 +607,18 @@ namespace FyTek
         {
             setOpt("outFile", a);
             return a;
+        }
+
+        // Apply the settings and get setup for next
+        [ComVisible(true)]
+        public String apply()
+        {
+            Dictionary<string, object> vOpts = opts;
+            AppendXOPTStoVOPTS(vOpts: vOpts);
+            pdfmeldString += setBaseOpts(vOpts) + " -pdfmeld ";
+            opts.Clear();
+            xOpts.Clear();
+            return pdfmeldString;
         }
 
         // Compression 1.5
@@ -1053,6 +1108,13 @@ namespace FyTek
         }
 
         [ComVisible(true)]
+        public String setColorFileIn(String a)
+        {
+            setOpt("colorin", a);
+            return a;
+        }
+
+        [ComVisible(true)]
         public String setPageNumFont(String a)
         {
             setOpt("pagenumfont", a);
@@ -1220,6 +1282,17 @@ namespace FyTek
             return fileId;
         }
 
+        // Calls buildPDF and clears options
+        [ComVisible(true)]
+        public BuildResults run(bool waitForExit = true,
+            String saveFile = "",
+            Dictionary<string, object> vOpts = null) {
+
+            BuildResults res = buildPDF(waitForExit, saveFile, vOpts);
+            resetOpts();
+            return res;
+        }
+
         // Calls buildPDF or buildPDFTCP
         [ComVisible(true)]
         public BuildResults buildPDF(bool waitForExit = true,
@@ -1227,6 +1300,9 @@ namespace FyTek
             Dictionary<string, object> vOpts = null)
         {
             object host;
+            object s = "";
+            bool retBytes = false;
+            string fileout = "";
             if (vOpts == null){
                 vOpts = opts;
                 AppendXOPTStoVOPTS(vOpts: vOpts);
@@ -1240,12 +1316,23 @@ namespace FyTek
             }
             else
             {
-                // otherwise, build using the executable
+                // otherwise, build using the executable                
                 if (!saveFile.Equals(""))
                 {
                     vOpts["outFile"] = saveFile;
                 }
-                return build(waitForExit,vOpts);
+                if (!vOpts.TryGetValue("outFile", out s))
+                {
+                    fileout = getTempDir() + Guid.NewGuid().ToString();
+                    vOpts["outFile"] = fileout;
+                    retBytes = true;
+                }
+
+                BuildResults res =  build(waitForExit,vOpts);
+                if (retBytes) {
+                    res.bytes = File.ReadAllBytes(fileout);                    
+                }
+                return res;
             }
         }
 
@@ -1267,6 +1354,7 @@ namespace FyTek
         {
             BuildResults res = new BuildResults();
             byte[] bytes = { };
+            string args = "";
             ProcessStartInfo startInfo = new ProcessStartInfo();
             startInfo.CreateNoWindow = false;
             startInfo.UseShellExecute = !waitForExit;
@@ -1277,8 +1365,10 @@ namespace FyTek
             }
             startInfo.FileName = exe;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.Arguments = setBaseOpts(vOpts);
+            args = pdfmeldString + setBaseOpts(vOpts);
+            startInfo.Arguments = args;
             res = runProcess(startInfo, waitForExit);
+            res.cmd = args;
             return res;
         }
 
@@ -1288,12 +1378,14 @@ namespace FyTek
         {
             opts.Clear();
             xOpts.Clear();
+            dataFiles.Clear();
             unitsMult = 1;
+            pdfmeldString = "";
+            clearTempDir();
             if (resetServer)
             {
                 server.Clear();
             }
-
         }
 
         // Passes file to server over socket
@@ -1309,7 +1401,11 @@ namespace FyTek
             String message = "";
             if (!isServerRunning())
             {
-                return "Server not running";
+                string dir = getTempDir();                
+                File.WriteAllBytes(dir + fileName, bytes);
+                dataFiles[fileName] = dir + fileName;        
+                return fileName;
+                // return "Server not running";
             }
             try
             {
@@ -1352,7 +1448,46 @@ namespace FyTek
 
         private void setOpt(String k, object v)
         {
-            opts[k] = v;
+            object s = "";
+            if ((v is String) && dataFiles.TryGetValue((String)v, out s))
+            {
+                opts[k] = s;
+            } else {
+                opts[k] = v;
+            }
+        }
+
+        private void setXopt(String k, object v)
+        {
+            xOpts[k] = v;
+        }
+
+        private void AppendXOPTStoVOPTS(
+            Dictionary<string, object> vOpts = null
+            )
+        {
+             // sort xOpts keys so attributes precede docactions
+             // as it is safer if all docactions are at the end of parameters.
+             // then append xOpts to vOpts
+             int numxo = 0;
+             foreach (var xopt in xOpts)
+             { numxo++;
+             }
+             if (numxo > 0)
+             {
+               String[] xokeys = new string[numxo];
+               int i = 0;
+               foreach (var xopt in xOpts)
+               { String xkey = xopt.Key;
+                 xokeys[i]= xkey;
+                 i++;
+               }
+               Array.Sort(xokeys);
+               foreach (var xk in xokeys)
+               { vOpts[xk] = xOpts[xk];
+               }
+             }
+             return;
         }
 
         private void setXopt(String k, object v)
@@ -1437,7 +1572,10 @@ namespace FyTek
 
             try
             {
-
+                if (vOpts == null)
+                {
+                    vOpts = opts;
+                }
                 object s;
                 if (vOpts.TryGetValue("serverCmd", out s))
                 {
@@ -1530,6 +1668,10 @@ namespace FyTek
             }
 
             errMsg = sendTCP(vOpts);
+            if (vOpts == null)
+            {
+                vOpts = opts;
+            }
             if (errMsg.Equals(""))
             {
                 object s = "";
