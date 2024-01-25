@@ -1490,6 +1490,39 @@ namespace FyTek
              return;
         }
 
+        private void setXopt(String k, object v)
+        {
+            xOpts[k] = v;
+        }
+
+        private void AppendXOPTStoVOPTS(
+            Dictionary<string, object> vOpts = null
+            )
+        {
+             // sort xOpts keys so attributes precede docactions
+             //   as it is safer if all docactions are at the end of parameters.
+             // then append xOpts to vOpts
+             int numxo = 0;
+             foreach (var xopt in xOpts)
+             { numxo++;
+             }
+             if (numxo > 0)
+             {
+               String[] xokeys = new string[numxo];
+               int i = 0;
+               foreach (var xopt in xOpts)
+               { String xkey = xopt.Key;
+                 xokeys[i]= xkey;
+                 i++;
+               }
+               Array.Sort(xokeys);
+               foreach (var xk in xokeys)
+               { vOpts[xk] = xOpts[xk];
+               }
+             }
+             return;
+        }
+
         private BuildResults runProcess(ProcessStartInfo startInfo, bool waitForExit)
         {
             // Start the process with the info we specified.
