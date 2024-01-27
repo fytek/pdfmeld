@@ -21,6 +21,7 @@
 
 
 using System;
+using System.Text;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -36,6 +37,7 @@ using System.Threading.Tasks;
 // Compiling this code:
 // csc /target:library /platform:anycpu /out:pdfmeld_20.dll pdfmeld_20.cs /keyfile:mykey.snk
 // C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe /codebase c:pdfmeld_20.dll
+// C:\Windows\Microsoft.NET\Framework64\v4.0.30319\regasm.exe -tlb /codebase c:pdfmeld_20.dll (to create a tlb file for old COM)
 // cscript.exe (or wscript.exe) testprog.vbs
 
 namespace FyTek
@@ -80,7 +82,7 @@ namespace FyTek
             public String result { get; set; }
             // pages in output PDF (sever mode only)
             public int pages { get; set; }
-            // the command line options sent when not using a server (if using a server, check the log file set during startServer())
+            // the command line options sent when not using a server (if using a server, check the log file specified during startServer())
             public String cmd { get; set; }
             public List<GDriveOcr> gDriveOcr { get; set; }
             public byte[] getOcrFile(String mimeType){
@@ -90,7 +92,31 @@ namespace FyTek
                     }
                 } catch(Exception){}                
             return new byte[] {};
-            }           
+            }      
+            // get the total number of bytes in the bytes array (typically the PDF output)
+            public int getNumBytes() {
+                return bytes.Length;
+            }
+            // return all or part of the PDF in hex format just call getHexChunk() to get entire PDF in hex, or send start/length to get just that portion
+            // where len=1000 will return a hex string with 2000 characters.
+            public String getHexChunk(int start = 0, int len = 0) {
+                start = Math.Max(start, 0);
+                len = Math.Max(len, 0);
+                start = Math.Min(start, bytes.Length);
+                if (start + len > bytes.Length){
+                    len = bytes.Length - start + 1;
+                }
+                if (len == 0){
+                    start = 0;
+                    len = bytes.Length;
+                }
+                byte[] results = new byte[len];                
+                Array.Copy(bytes, start, results, 0, len);    
+                try {            
+                    return BitConverter.ToString(results).Replace("-",string.Empty);
+                } catch(Exception){}
+                return null;
+            }            
         }
 
         public class GDriveOcr
@@ -1323,14 +1349,20 @@ namespace FyTek
                 }
                 if (!vOpts.TryGetValue("outFile", out s))
                 {
-                    fileout = getTempDir() + Guid.NewGuid().ToString();
+                    fileout = Guid.NewGuid().ToString();
                     vOpts["outFile"] = fileout;
                     retBytes = true;
                 }
 
                 BuildResults res =  build(waitForExit,vOpts);
                 if (retBytes) {
-                    res.bytes = File.ReadAllBytes(fileout);                    
+                    if (File.Exists(fileout)){
+                        res.bytes = File.ReadAllBytes(fileout);
+                    } else if (File.Exists(getTempDir() + fileout)){
+                        res.bytes = File.ReadAllBytes(getTempDir() + fileout);
+                    } else {
+                        res.msg = "Cannot find output file: " + fileout;
+                    }
                 }
                 return res;
             }
@@ -1366,6 +1398,9 @@ namespace FyTek
             startInfo.FileName = exe;
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             args = pdfmeldString + setBaseOpts(vOpts);
+            if (!tempDir.Equals(String.Empty)){
+                args = "-cwd " + tempDir + " " + args;    
+            }
             startInfo.Arguments = args;
             res = runProcess(startInfo, waitForExit);
             res.cmd = args;
@@ -1401,9 +1436,8 @@ namespace FyTek
             String message = "";
             if (!isServerRunning())
             {
-                string dir = getTempDir();                
-                File.WriteAllBytes(dir + fileName, bytes);
-                dataFiles[fileName] = dir + fileName;        
+                File.WriteAllBytes(fileName, bytes);
+                dataFiles[fileName] = fileName;        
                 return fileName;
                 // return "Server not running";
             }
@@ -1468,39 +1502,6 @@ namespace FyTek
         {
              // sort xOpts keys so attributes precede docactions
              // as it is safer if all docactions are at the end of parameters.
-             // then append xOpts to vOpts
-             int numxo = 0;
-             foreach (var xopt in xOpts)
-             { numxo++;
-             }
-             if (numxo > 0)
-             {
-               String[] xokeys = new string[numxo];
-               int i = 0;
-               foreach (var xopt in xOpts)
-               { String xkey = xopt.Key;
-                 xokeys[i]= xkey;
-                 i++;
-               }
-               Array.Sort(xokeys);
-               foreach (var xk in xokeys)
-               { vOpts[xk] = xOpts[xk];
-               }
-             }
-             return;
-        }
-
-        private void setXopt(String k, object v)
-        {
-            xOpts[k] = v;
-        }
-
-        private void AppendXOPTStoVOPTS(
-            Dictionary<string, object> vOpts = null
-            )
-        {
-             // sort xOpts keys so attributes precede docactions
-             //   as it is safer if all docactions are at the end of parameters.
              // then append xOpts to vOpts
              int numxo = 0;
              foreach (var xopt in xOpts)
